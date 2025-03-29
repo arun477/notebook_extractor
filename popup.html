@@ -275,6 +275,11 @@
       color: var(--success-color);
     }
 
+    .cell-type.raw {
+      background-color: rgba(244, 180, 0, 0.1);
+      color: var(--warning-color);
+    }
+
     .cell-preview {
       flex: 1;
       white-space: nowrap;
@@ -319,6 +324,10 @@
           <label class="checkbox-label">
             <input type="checkbox" id="includeMarkdown" checked> 
             Markdown cells
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeRaw" checked> 
+            Raw cells
           </label>
           <label class="checkbox-label">
             <input type="checkbox" id="skipEmpty" checked> 
@@ -388,11 +397,19 @@
     </button>
   </div>
 
+  <!-- Additional Debug Button -->
+  <div class="buttons">
+    <button id="debugBtn" style="background-color: var(--warning-color);display:none;">
+      <span>Diagnose Page</span>
+      <span class="spinner"></span>
+    </button>
+  </div>
+
   <!-- Status Display -->
   <div id="status" class="status">Ready to extract content</div>
 
   <footer>
-    Optimized for LLM input  v1.0.0
+    Optimized for LLM input  v1.1.0
   </footer>
 
   <script src="popup.js"></script>

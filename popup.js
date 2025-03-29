@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const themeToggle = document.getElementById('themeToggle');
   const includeCode = document.getElementById('includeCode');
   const includeMarkdown = document.getElementById('includeMarkdown');
+  const includeRaw = document.getElementById('includeRaw');
   const skipEmpty = document.getElementById('skipEmpty');
   const promptTemplate = document.getElementById('promptTemplate');
   const customTemplate = document.getElementById('customTemplate');
@@ -11,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const cellList = document.getElementById('cellList');
   const copyBtn = document.getElementById('copyBtn');
   const downloadBtn = document.getElementById('downloadBtn');
+  const debugBtn = document.getElementById('debugBtn');
   const statusDiv = document.getElementById('status');
   
   // State variables
@@ -158,8 +160,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     cellList.innerHTML = '';
     notebookCells.forEach((cell, index) => {
-      const preview = truncateText(cell.source.trim(), 40) || '(Empty cell)';
-      const isEmpty = cell.source.trim() === '';
+      const preview = truncateText(cell.source.trim() || '(Empty cell)', 40);
+      const isEmpty = cell.isEmpty;
       
       const cellElement = document.createElement('div');
       cellElement.className = 'cell-item';
@@ -171,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
       cellList.appendChild(cellElement);
     });
     
-    setStatus('Cells loaded successfully', 'success');
+    setStatus(`${notebookCells.length} cells loaded successfully`, 'success');
     setTimeout(() => {
       setStatus('Ready to extract content', '');
     }, 1500);
@@ -221,6 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return {
       includeCode: includeCode.checked,
       includeMarkdown: includeMarkdown.checked,
+      includeRaw: includeRaw ? includeRaw.checked : true, // Handle case where element doesn't exist yet
       skipEmpty: skipEmpty.checked,
       selectedCells: selectedCells,
       selectionMode: selectionMode.checked
@@ -302,8 +305,10 @@ document.addEventListener('DOMContentLoaded', function() {
   function resetButtonState() {
     copyBtn.classList.remove('loading');
     downloadBtn.classList.remove('loading');
+    debugBtn.classList.remove('loading');
     copyBtn.disabled = false;
     downloadBtn.disabled = false;
+    debugBtn.disabled = false;
   }
   
   // Copy to clipboard
@@ -318,6 +323,42 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
   
+  // Debug extraction
+  function debugExtraction() {
+    debugBtn.classList.add('loading');
+    debugBtn.disabled = true;
+    setStatus('Diagnosing page...', '');
+    
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (!tabs[0]) {
+        setStatus('No active tab found', 'error');
+        resetButtonState();
+        return;
+      }
+      
+      chrome.scripting.executeScript({
+        target: {tabId: tabs[0].id},
+        files: ['content.js']
+      }, () => {
+        setTimeout(() => {
+          chrome.tabs.sendMessage(
+            tabs[0].id,
+            {action: 'debugExtraction'},
+            function(response) {
+              resetButtonState();
+              
+              if (response && response.variant) {
+                setStatus(`Detected ${response.variant} with ${response.cellCount} potential cells`, 'success');
+              } else {
+                setStatus('Diagnosis complete. See console for details.', 'success');
+              }
+            }
+          );
+        }, 200);
+      });
+    });
+  }
+  
   // Copy button click handler
   copyBtn.addEventListener('click', function() {
     extractContent('copy');
@@ -326,6 +367,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Download button click handler
   downloadBtn.addEventListener('click', function() {
     extractContent('download');
+  });
+  
+  // Debug button click handler
+  debugBtn.addEventListener('click', function() {
+    debugExtraction();
   });
   
   // Initialize the UI

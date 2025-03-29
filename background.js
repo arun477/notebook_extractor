@@ -1,14 +1,17 @@
+const recentDownloads = new Map();
+
 // Listen for installation events
 chrome.runtime.onInstalled.addListener(function(details) {
   console.log('Jupyter Notebook to LLM Extractor installed');
 });
 
 // Listen for messages from content script or popup
+// Listen for messages from content script or popup
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   console.log("Background script received message:", request.action);
   
   if (request.action === 'downloadText') {
-    downloadText(request.text, request.filename);
+    downloadText(request.text, request.filename, request.source || 'unknown');
     sendResponse({success: true});
   }
   else if (request.action === 'initiateExtraction') {
@@ -58,11 +61,36 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 /**
  * Trigger a download of the extracted text
  */
-function downloadText(text, filename) {
+function downloadText(text, filename, source = '') {
   if (!text || !filename) {
     console.error('Invalid download parameters');
     return;
   }
+  
+  // Prevent duplicate downloads
+  const now = Date.now();
+  const downloadKey = `${filename}_${text.length}`;
+  
+  // If we've downloaded this exact file in the last 2 seconds, skip it
+  if (recentDownloads.has(downloadKey)) {
+    const lastTime = recentDownloads.get(downloadKey);
+    if (now - lastTime < 2000) { // 2 second deduplication window
+      console.log(`Skipping duplicate download for ${filename} (${source})`);
+      return;
+    }
+  }
+  
+  // Track this download
+  recentDownloads.set(downloadKey, now);
+  
+  // Cleanup old entries (anything older than 10 seconds)
+  for (const [key, timestamp] of recentDownloads.entries()) {
+    if (now - timestamp > 10000) {
+      recentDownloads.delete(key);
+    }
+  }
+  
+  console.log(`Downloading ${filename} from ${source}`);
   
   // For Manifest V3 service workers, we need to use a different approach
   // as Blob URLs don't work directly in service workers
