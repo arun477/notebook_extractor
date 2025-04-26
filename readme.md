@@ -1,6 +1,6 @@
 # Jupyter to LLM Extractor
 
-> **Status:** In development - not yet published to Chrome Web Store
+> Not yet published to chrome web store. Manual installation (currently the only option).
 
 A Chrome extension that extracts content from Jupyter notebooks for use with large language models.
 
